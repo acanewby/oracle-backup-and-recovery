@@ -1,0 +1,74 @@
+#!/bin/sh
+
+# ======================================
+# (c) 2018 Adrian Newby
+# ======================================
+# A general-purpose backup script
+# It relies on the existence of /etc/oratab
+# to determine the Oracle home for the given database
+#
+# Parameters: 1) hot | cold - indicates whether hot or cold backup should be conducted
+#             2) <dbname>   - name of database to back up
+#
+# Example   : backup-db hot mydb
+#
+# (See bottom of file for changelog)
+# ======================================
+
+
+
+BKP_TYPE=$1
+ORACLE_SID=$2
+OS=`uname`
+
+if [ -z "$BKP_TYPE" ]; then
+	echo "A backup type must be supplied"
+	echo ""
+	echo "Usage: backup-db.sh <hot|cold> <database>"
+	echo ""
+	exit
+fi
+
+if [ "$BKP_TYPE" == "hot" ]; then
+	SCR="/home/oracle/bin/execute-hot-backup.sql"
+	DIR="/hotbackups"
+elif [ "$BKP_TYPE" == "cold" ]; then
+	SCR="/home/oracle/bin/execute-cold-backup.sql"
+	DIR="/coldbackups"
+else
+	echo "Backup type must be either \"hot\" or \"cold\" with attention to letter case"
+	exit
+fi
+
+if [ -z "$ORACLE_SID" ]; then
+	echo "A database must be supplied"
+	echo ""
+	echo "Usage: backup-db.sh <hot|cold> <database>"
+	echo ""
+	exit
+fi
+
+
+export ORACLE_SID
+
+ORACLE_HOME=`cat /etc/oratab | grep $ORACLE_SID | awk 'BEGIN { FS = ":" } ; { print $2 }'`
+export ORACLE_HOME
+
+if [ -z "$ORACLE_HOME" ]; then
+	echo "Could not locate Oracle home directory for database: $ORACLE_SID"
+	echo ""
+	echo "Usage: backup-db.sh <hot|cold> <database>"
+	echo ""
+	exit
+fi
+
+export PATH=$ORACLE_HOME/bin:/home/oracle/bin:$PATH
+
+## Execute the backup
+echo "---------------------------------------"
+echo "Database    : $ORACLE_SID"
+echo "Backup type : $BKP_TYPE"
+echo "Oracle home : $ORACLE_HOME"
+echo "---------------------------------------"
+sqlplus / AS SYSDBA @${SCR} $ORACLE_SID ${DIR}/$ORACLE_SID $OS
+

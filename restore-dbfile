@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# ======================================
+# (c) 2018 Adrian Newby
+# ======================================
+# A script to restore a single .gz file to an oracle dbfile, or to a raw device.
+#
+# Usage: restore-dbfile <filename>.gz
+# 
+# <filename> can be an absolute, or relative file name.
+#
+# Example: restore-dbfile /hotbackups/client/[slash]dev[slash]client[slash]data01.gz
+# ======================================
+
+OS=`uname`
+
+INFILE=$1
+OUTFILE=`basename $INFILE | sed -e "s/\[slash\]/\//g" | sed -e "s/\.gz//"`
+
+
+if [ -z "$INFILE" ]; then
+	echo "A file <filename>.gz must be supplied."
+	echo ""
+	echo "Usage: restore-dbfile <filename>.gz"
+	echo ""
+	exit
+fi
+
+FILEXT=`echo $INFILE | awk -F "." '{print $NF}'`
+
+if [ "$FILEXT" != "gz" ]; then
+        echo "A file must have a .gz extension"
+        echo ""
+        echo "Usage: restore-dbfile <filename>.gz"
+        echo ""
+        exit
+fi
+
+if [ "$OS" == "Linux" ]; then
+	gunzip $INFILE
+	INFILE=`echo $INFILE | sed -e "s/\.gz//"`
+	dd if=$INFILE of=$OUTFILE
+else
+	gunzip -cf < $INFILE > $OUTFILE
+fi
+
+
+
